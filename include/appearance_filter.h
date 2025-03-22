@@ -42,7 +42,11 @@ private:
 
 public:
 
+	// Initialize from colmap dataset
 	void init(const char* colmappath);
+	
+	// Initialize directly from camera positions tensor (Nx3)
+	void init(const torch::Tensor& camera_positions);
 
 	void filter(ExplicitTreeNode* root, const std::vector<Gaussian>& gaussians, float orig_limit, float layermultiplier);
 

@@ -39,3 +39,14 @@ torch::Tensor& viewpoint,
 torch::Tensor& viewdir, 
 torch::Tensor& ts,
 torch::Tensor& num_kids);
+
+void CreateHier(
+Tensor& means,
+Tensor& features_dc,
+Tensor& features_rest,
+Tensor& opacities,
+Tensor& scales,
+Tensor& quats,
+const Tensor& camera_positions,
+const std::string& output_dir,
+float limit);

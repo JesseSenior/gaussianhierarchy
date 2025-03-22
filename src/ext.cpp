@@ -13,6 +13,7 @@
 #include "torch_interface.h"
 
 PYBIND11_MODULE(TORCH_EXTENSION_NAME, m) {
+  m.def("create_hier", &CreateHier);
   m.def("load_hierarchy", &LoadHierarchy);
   m.def("write_hierarchy", &WriteHierarchy);
   m.def("expand_to_target", &ExpandToTarget);

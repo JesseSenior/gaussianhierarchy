@@ -21,20 +21,54 @@
 #include "runtime_switching.h"
 
 template <typename T>
-T ReadBinaryLittleEndian(std::ifstream* infile)
+T ReadBinaryLittleEndian(std::ifstream *infile)
 {
 	T val;
-	infile->read((char*)&val, sizeof(T));
+	infile->read((char *)&val, sizeof(T));
 	return val;
 }
 
 template <typename T>
-void ReadBinaryLittleEndian(std::ifstream* infile, std::vector<T>* vals)
+void ReadBinaryLittleEndian(std::ifstream *infile, std::vector<T> *vals)
 {
-	infile->read((char*)vals->data(), sizeof(T) * vals->size());
+	infile->read((char *)vals->data(), sizeof(T) * vals->size());
 }
 
-void AppearanceFilter::init(const char* colmappath)
+void AppearanceFilter::init(const torch::Tensor &camera_positions)
+{
+	// Clear existing data
+	// camera_params.clear();
+	cameras.clear();
+
+	// Validate tensor dimensions
+	TENSOR_ON_CPU(camera_positions);
+	TORCH_CHECK(camera_positions.dim() == 2, "Camera positions must be Nx3 tensor");
+	TORCH_CHECK(camera_positions.size(1) == 3, "Camera positions must be Nx3 tensor");
+
+	auto positions_a = camera_positions.accessor<float, 2>();
+	const size_t num_cams = positions_a.size(0);
+
+	// Create default camera parameters
+	CameraParametersColmap default_params{
+		1,		// id
+		1024,	// width
+		768,	// height
+		1000.f, // fx
+		1000.f, // fy
+		512.f,	// dx
+		384.f	// dy
+	};
+
+	// Add cameras with default parameters
+	// camera_params.push_back(default_params);
+	for (size_t i = 0; i < num_cams; ++i)
+	{
+		cameras.push_back({default_params,
+						   Eigen::Vector3f(positions_a[i][0], positions_a[i][1], positions_a[i][2])});
+	}
+}
+
+void AppearanceFilter::init(const char *colmappath)
 {
 	const std::string basePathName = std::string(colmappath) + "/sparse/0/";
 	const std::string camerasListing = basePathName + "/cameras.bin";
@@ -71,24 +105,26 @@ void AppearanceFilter::init(const char* colmappath)
 		const size_t num_reg_images = ReadBinaryLittleEndian<uint64_t>(&imagesFile);
 		for (size_t i = 0; i < num_reg_images; ++i)
 		{
-			unsigned int	cId = ReadBinaryLittleEndian<unsigned int>(&imagesFile);
-			float			qw = float(ReadBinaryLittleEndian<double>(&imagesFile));
-			float			qx = float(ReadBinaryLittleEndian<double>(&imagesFile));
-			float			qy = float(ReadBinaryLittleEndian<double>(&imagesFile));
-			float			qz = float(ReadBinaryLittleEndian<double>(&imagesFile));
-			float			tx = float(ReadBinaryLittleEndian<double>(&imagesFile));
-			float			ty = float(ReadBinaryLittleEndian<double>(&imagesFile));
-			float			tz = float(ReadBinaryLittleEndian<double>(&imagesFile));
-			size_t			id = ReadBinaryLittleEndian<unsigned int>(&imagesFile);
+			unsigned int cId = ReadBinaryLittleEndian<unsigned int>(&imagesFile);
+			float qw = float(ReadBinaryLittleEndian<double>(&imagesFile));
+			float qx = float(ReadBinaryLittleEndian<double>(&imagesFile));
+			float qy = float(ReadBinaryLittleEndian<double>(&imagesFile));
+			float qz = float(ReadBinaryLittleEndian<double>(&imagesFile));
+			float tx = float(ReadBinaryLittleEndian<double>(&imagesFile));
+			float ty = float(ReadBinaryLittleEndian<double>(&imagesFile));
+			float tz = float(ReadBinaryLittleEndian<double>(&imagesFile));
+			size_t id = ReadBinaryLittleEndian<unsigned int>(&imagesFile);
 
 			char name_char;
-			do {
+			do
+			{
 				imagesFile.read(&name_char, 1);
 			} while (name_char != '\0');
 
 			// ignore the 2d points
 			const size_t num_points2D = ReadBinaryLittleEndian<uint64_t>(&imagesFile);
-			for (size_t j = 0; j < num_points2D; ++j) {
+			for (size_t j = 0; j < num_points2D; ++j)
+			{
 				ReadBinaryLittleEndian<double>(&imagesFile);
 				ReadBinaryLittleEndian<double>(&imagesFile);
 				ReadBinaryLittleEndian<uint64_t>(&imagesFile);
@@ -105,19 +141,19 @@ void AppearanceFilter::init(const char* colmappath)
 
 			Eigen::Vector3f position = -(orientation * translation);
 
-			cameras.push_back({ cameraParameters[id], position });
+			cameras.push_back({cameraParameters[id], position});
 		}
 	}
 }
 
-bool verify_rec(const ExplicitTreeNode* node, const std::map<const ExplicitTreeNode*, int>& tree2base, const std::vector<int>& seen, int parent_seen)
+bool verify_rec(const ExplicitTreeNode *node, const std::map<const ExplicitTreeNode *, int> &tree2base, const std::vector<int> &seen, int parent_seen)
 {
 	auto entry = tree2base.find(node);
 	if (entry == tree2base.end())
 		throw std::runtime_error("Looking for an entry that does not exist in tree!");
 
 	int id = entry->second;
-	
+
 	if (seen[id])
 	{
 		if (parent_seen != -1)
@@ -135,7 +171,7 @@ bool verify_rec(const ExplicitTreeNode* node, const std::map<const ExplicitTreeN
 	return true;
 }
 
-bool bottomRec(ExplicitTreeNode* node, const std::map<const ExplicitTreeNode*, int>& tree2base, const std::vector<int>& seen, std::vector<ExplicitTreeNode*>& bottom)
+bool bottomRec(ExplicitTreeNode *node, const std::map<const ExplicitTreeNode *, int> &tree2base, const std::vector<int> &seen, std::vector<ExplicitTreeNode *> &bottom)
 {
 	auto entry = tree2base.find(node);
 	if (entry == tree2base.end())
@@ -170,8 +206,7 @@ bool bottomRec(ExplicitTreeNode* node, const std::map<const ExplicitTreeNode*, i
 		return false;
 }
 
-
-void andBelowRec(ExplicitTreeNode* node, const std::map<const ExplicitTreeNode*, int>& tree2base, const std::vector<int>& marked, std::vector<ExplicitTreeNode*>& bottomandbelow, bool bebelow = false)
+void andBelowRec(ExplicitTreeNode *node, const std::map<const ExplicitTreeNode *, int> &tree2base, const std::vector<int> &marked, std::vector<ExplicitTreeNode *> &bottomandbelow, bool bebelow = false)
 {
 	auto entry = tree2base.find(node);
 	if (entry == tree2base.end())
@@ -195,33 +230,32 @@ void andBelowRec(ExplicitTreeNode* node, const std::map<const ExplicitTreeNode*,
 }
 
 void recCollapse(
-	ExplicitTreeNode* topnode,
-	ExplicitTreeNode* node,
-	std::map<const ExplicitTreeNode*, int>& tree2base,
-	std::vector<int>& marked)
+	ExplicitTreeNode *topnode,
+	ExplicitTreeNode *node,
+	std::map<const ExplicitTreeNode *, int> &tree2base,
+	std::vector<int> &marked)
 {
 	auto it = tree2base.find(node);
 	if (it == tree2base.end())
 		throw std::runtime_error("Looking for an entry that does not exist in tree!");
 
 	if (marked[it->second] || node->depth == 0)
-	{		
+	{
 		topnode->children.push_back(node);
 	}
 	else
 	{
-		for (auto& child : node->children)
+		for (auto &child : node->children)
 			recCollapse(topnode, child, tree2base, marked);
 	}
 }
 
 void collapseUnused(
-	std::vector<ExplicitTreeNode*>& bottom,
-	std::map<const ExplicitTreeNode*, int>& tree2base,
-	std::vector<int>& marked
-	)
+	std::vector<ExplicitTreeNode *> &bottom,
+	std::map<const ExplicitTreeNode *, int> &tree2base,
+	std::vector<int> &marked)
 {
-	for (auto& node : bottom)
+	for (auto &node : bottom)
 	{
 		auto it = tree2base.find(node);
 		if (it == tree2base.end())
@@ -231,26 +265,26 @@ void collapseUnused(
 
 		auto backup = node->children;
 		node->children.clear();
-		for (auto& child : backup)
+		for (auto &child : backup)
 			recCollapse(node, child, tree2base, marked);
 	}
 }
 
-void recVisitAndCount(ExplicitTreeNode* node, int& nodes, int& leaves)
+void recVisitAndCount(ExplicitTreeNode *node, int &nodes, int &leaves)
 {
 	nodes++;
 	if (node->depth == 0)
 		leaves++;
-	for (auto& child : node->children)
+	for (auto &child : node->children)
 	{
 		recVisitAndCount(child, nodes, leaves);
 	}
 }
 
-void recRelSizes(ExplicitTreeNode* node, std::vector<float>& sizes, float parentsize)
+void recRelSizes(ExplicitTreeNode *node, std::vector<float> &sizes, float parentsize)
 {
 	auto extent = node->bounds.maxx - node->bounds.minn;
-	Eigen::Vector3f extent3 = { extent.x(), extent.y(), extent.z() };
+	Eigen::Vector3f extent3 = {extent.x(), extent.y(), extent.z()};
 	float mysize = extent3.norm();
 
 	if (parentsize != -1)
@@ -262,7 +296,7 @@ void recRelSizes(ExplicitTreeNode* node, std::vector<float>& sizes, float parent
 		recRelSizes(child, sizes, mysize);
 }
 
-void AppearanceFilter::filter(ExplicitTreeNode* root, const std::vector<Gaussian>& gaussians, float orig_limit, float layermultiplier)
+void AppearanceFilter::filter(ExplicitTreeNode *root, const std::vector<Gaussian> &gaussians, float orig_limit, float layermultiplier)
 {
 	{
 		std::vector<Eigen::Vector3f> positions;
@@ -273,7 +307,7 @@ void AppearanceFilter::filter(ExplicitTreeNode* root, const std::vector<Gaussian
 		std::vector<Node> basenodes;
 		std::vector<Box> boxes;
 
-		std::map<int, const ExplicitTreeNode*> base2tree;
+		std::map<int, const ExplicitTreeNode *> base2tree;
 
 		Writer::makeHierarchy(
 			gaussians,
@@ -287,7 +321,7 @@ void AppearanceFilter::filter(ExplicitTreeNode* root, const std::vector<Gaussian
 			boxes,
 			&base2tree);
 
-		std::map<const ExplicitTreeNode*, int> tree2base;
+		std::map<const ExplicitTreeNode *, int> tree2base;
 		for (auto entry : base2tree)
 		{
 			tree2base.insert(std::make_pair(entry.second, entry.first));
@@ -317,24 +351,22 @@ void AppearanceFilter::filter(ExplicitTreeNode* root, const std::vector<Gaussian
 			double sum = std::accumulate(std::begin(v), std::end(v), 0.0);
 			double mu = sum / v.size();
 			double accum = 0.0;
-			std::for_each(std::begin(v), std::end(v), [&](const double d) {
-				accum += (d - mu) * (d - mu);
-				});
+			std::for_each(std::begin(v), std::end(v), [&](const double d)
+						  { accum += (d - mu) * (d - mu); });
 			double stdev = sqrt(accum / (v.size() - 1));
 
 			std::cout << "Child-to-parent size relation (mean, std):" << mu << " " << stdev << std::endl;
 
 			Switching::markVisibleForAllViewpoints(limit,
-				(int*)basenodes.data(),
-				basenodes.size(),
-				(float*)boxes.data(),
-				(float*)campositions.data(),
-				campositions.size(),
-				seen.data(),
-				0, 0, 0
-			);
+												   (int *)basenodes.data(),
+												   basenodes.size(),
+												   (float *)boxes.data(),
+												   (float *)campositions.data(),
+												   campositions.size(),
+												   seen.data(),
+												   0, 0, 0);
 
-			std::vector<ExplicitTreeNode*> bottom;
+			std::vector<ExplicitTreeNode *> bottom;
 			bottomRec(root, tree2base, seen, bottom);
 
 			if (limit > 1)
@@ -357,8 +389,7 @@ void AppearanceFilter::filter(ExplicitTreeNode* root, const std::vector<Gaussian
 	}
 }
 
-
-void AppearanceFilter::writeAnchors(const char* filename, ExplicitTreeNode * root, const std::vector<Gaussian>&gaussians, float limit)
+void AppearanceFilter::writeAnchors(const char *filename, ExplicitTreeNode *root, const std::vector<Gaussian> &gaussians, float limit)
 {
 	std::cout << "Identifying and writing anchor points" << std::endl;
 
@@ -370,7 +401,7 @@ void AppearanceFilter::writeAnchors(const char* filename, ExplicitTreeNode * roo
 	std::vector<Node> basenodes;
 	std::vector<Box> boxes;
 
-	std::map<int, const ExplicitTreeNode*> base2tree;
+	std::map<int, const ExplicitTreeNode *> base2tree;
 
 	Writer::makeHierarchy(
 		gaussians,
@@ -384,7 +415,7 @@ void AppearanceFilter::writeAnchors(const char* filename, ExplicitTreeNode * roo
 		boxes,
 		&base2tree);
 
-	std::map<const ExplicitTreeNode*, int> tree2base;
+	std::map<const ExplicitTreeNode *, int> tree2base;
 	for (auto entry : base2tree)
 		tree2base.insert(std::make_pair(entry.second, entry.first));
 
@@ -396,22 +427,21 @@ void AppearanceFilter::writeAnchors(const char* filename, ExplicitTreeNode * roo
 	std::vector<int> marked(basenodes.size(), 0);
 
 	Switching::markVisibleForAllViewpoints(limit,
-		(int*)basenodes.data(),
-		basenodes.size(),
-		(float*)boxes.data(),
-		(float*)campositions.data(),
-		campositions.size(),
-		seen.data(),
-		0, 0, 0
-	);
+										   (int *)basenodes.data(),
+										   basenodes.size(),
+										   (float *)boxes.data(),
+										   (float *)campositions.data(),
+										   campositions.size(),
+										   seen.data(),
+										   0, 0, 0);
 
-	std::vector<ExplicitTreeNode*> bottom;
+	std::vector<ExplicitTreeNode *> bottom;
 	bottomRec(root, tree2base, seen, bottom);
 
 	for (int i = 0; i < bottom.size(); i++)
 		marked[tree2base[bottom[i]]] = 1;
 
-	std::vector<ExplicitTreeNode*> bottomandbelow;
+	std::vector<ExplicitTreeNode *> bottomandbelow;
 	andBelowRec(root, tree2base, marked, bottomandbelow);
 
 	std::ofstream anchors(filename, std::ios_base::binary);
@@ -422,7 +452,7 @@ void AppearanceFilter::writeAnchors(const char* filename, ExplicitTreeNode * roo
 		int index = tree2base[bottomandbelow[i]];
 		size += basenodes[index].count_leafs + basenodes[index].count_merged;
 	}
-	anchors.write((char*)&size, sizeof(int));
+	anchors.write((char *)&size, sizeof(int));
 
 	for (int i = 0; i < bottomandbelow.size(); i++)
 	{
@@ -430,7 +460,7 @@ void AppearanceFilter::writeAnchors(const char* filename, ExplicitTreeNode * roo
 
 		for (int j = basenodes[index].start; j < basenodes[index].start + basenodes[index].count_leafs + basenodes[index].count_merged; j++)
 		{
-			anchors.write((char*)&j, sizeof(int));
+			anchors.write((char *)&j, sizeof(int));
 		}
 	}
 }
