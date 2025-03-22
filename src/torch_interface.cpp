@@ -1,8 +1,8 @@
 #include "torch_interface.h"
-#include "../hierarchy_loader.h"
-#include "../hierarchy_writer.h"
-#include "../traversal.h"
-#include "../runtime_switching.h"
+#include "hierarchy_loader.h"
+#include "hierarchy_writer.h"
+#include "traversal.h"
+#include "runtime_switching.h"
 
 std::tuple<torch::Tensor, torch::Tensor, torch::Tensor, torch::Tensor, torch::Tensor, torch::Tensor, torch::Tensor>
 LoadHierarchy(std::string filename)

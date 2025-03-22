@@ -10,7 +10,7 @@
  */
 
 #include <torch/extension.h>
-#include "torch/torch_interface.h"
+#include "torch_interface.h"
 
 PYBIND11_MODULE(TORCH_EXTENSION_NAME, m) {
   m.def("load_hierarchy", &LoadHierarchy);
