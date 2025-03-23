@@ -50,3 +50,8 @@ Tensor& quats,
 const Tensor& camera_positions,
 const std::string& output_dir,
 float limit);
+
+void MergeHier(
+const std::vector<std::string>& hier_files,
+const Tensor& chunk_centers,
+const std::string& output_path);
