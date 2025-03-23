@@ -94,16 +94,16 @@ void CreateHier(
     TORCH_CHECK(quats.size(1) == 4, "Rotations must be Nx4");
 
     // Convert tensors to CPU if needed
-    if (!position.is_cpu())
-        position = position.cpu();
-    if (!color.is_cpu())
-        color = color.cpu();
-    if (!opacity.is_cpu())
-        opacity = opacity.cpu();
-    if (!scale.is_cpu())
-        scale = scale.cpu();
-    if (!rotation.is_cpu())
-        rotation = rotation.cpu();
+    if (!means.is_cpu())
+        means = means.cpu();
+    if (!features_dc.is_cpu())
+        features_dc = features_dc.cpu();
+    if (!opacities.is_cpu())
+        opacities = opacities.cpu();
+    if (!scales.is_cpu())
+        scales = scales.cpu();
+    if (!quats.is_cpu())
+        quats = quats.cpu();
 
     // Create Gaussian structures
     const int count = position.size(0);
@@ -119,14 +119,14 @@ void CreateHier(
 #pragma omp parallel for
     for (int i = 0; i < count; ++i)
     {
-        gaussians[i].position = Eigen::Vector3f(position_a[i][0], position_a[i][1], position_a[i][2]);
-        gaussians[i].opacity = opacity_a[i][0];
+        gaussians[i].position = Eigen::Vector3f(means_a[i][0], means_a[i][1], means_a[i][2]);
+        gaussians[i].opacity = opacities_a[i];
         // Convert scale to log scale and rotation to normalized quaternion
         gaussians[i].scale = Eigen::Vector3f(
-            std::exp(scale_a[i][0]),
-            std::exp(scale_a[i][1]),
-            std::exp(scale_a[i][2]));
-        Eigen::Vector4f rot(rotation_a[i][0], rotation_a[i][1], rotation_a[i][2], rotation_a[i][3]);
+            std::exp(scales_a[i][0]),
+            std::exp(scales_a[i][1]),
+            std::exp(scales_a[i][2]));
+        Eigen::Vector4f rot(quats_a[i][0], quats_a[i][1], quats_a[i][2], quats_a[i][3]);
         gaussians[i].rotation = rot.normalized();
 
         // Copy SH coefficients with correct channel ordering (RGB)
