@@ -41,17 +41,17 @@ torch::Tensor& ts,
 torch::Tensor& num_kids);
 
 void CreateHier(
-Tensor& means,
-Tensor& features_dc,
-Tensor& features_rest,
-Tensor& opacities,
-Tensor& scales,
-Tensor& quats,
-const Tensor& camera_positions,
+torch::Tensor& means,
+torch::Tensor& features_dc,
+torch::Tensor& features_rest,
+torch::Tensor& opacities,
+torch::Tensor& scales,
+torch::Tensor& quats,
+const torch::Tensor& camera_positions,
 const std::string& output_dir,
 float limit);
 
 void MergeHier(
 const std::vector<std::string>& hier_files,
-const Tensor& chunk_centers,
+const torch::Tensor& chunk_centers,
 const std::string& output_path);
