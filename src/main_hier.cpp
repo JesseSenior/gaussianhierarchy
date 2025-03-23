@@ -18,9 +18,9 @@ void MergeHier(
     const torch::Tensor& chunk_centers,
     const std::string& output_path)
 {
-    std::cout << "\n=== 开始合并层次结构 ===" << std::endl;
-    std::cout << "待合并块数: " << hier_files.size() << std::endl;
-    std::cout << "输出路径: " << output_path << std::endl;
+    std::cout << "\n=== Merging hierarchies ===" << std::endl;
+    std::cout << "Number of chunks to merge: " << hier_files.size() << std::endl;
+    std::cout << "Output path: " << output_path << std::endl;
 
     // Convert chunk centers tensor to Eigen vectors
     TORCH_CHECK(chunk_centers.dim() == 2, "chunk_centers must be 2D tensor");
@@ -39,8 +39,8 @@ void MergeHier(
     ExplicitTreeNode* root = new ExplicitTreeNode;
     
     for (int chunk_id = 0; chunk_id < num_chunks; ++chunk_id) {
-        std::cout << "\n正在处理块 " << chunk_id + 1 << "/" << num_chunks << std::endl;
-        std::cout << "块中心: " << chunk_centers_vec[chunk_id].transpose() << std::endl;
+        std::cout << "\nProcessing chunk " << chunk_id + 1 << "/" << num_chunks << std::endl;
+        std::cout << "Chunk center: " << chunk_centers_vec[chunk_id].transpose() << std::endl;
         
         ExplicitTreeNode* chunk_root = new ExplicitTreeNode;
         std::vector<Gaussian> chunk_gaussians;
@@ -64,8 +64,8 @@ void MergeHier(
         }
         
         // Add as child node
-        std::cout << "已加载块 " << chunk_id << " 包含 " << chunk_gaussians.size() 
-                  << " 个高斯" << std::endl;
+        std::cout << "Loaded chunk " << chunk_id << " containing " << chunk_gaussians.size() 
+                  << " Gaussians" << std::endl;
         root->children.push_back(chunk_root);
         root->merged.push_back(chunk_root->merged[0]);
         root->depth = std::max(root->depth, chunk_root->depth + 1);
@@ -75,9 +75,9 @@ void MergeHier(
     }
 
     // Write merged hierarchy
-    std::cout << "\n=== 合并完成 ===" << std::endl;
-    std::cout << "合并后总高斯数: " << gaussians.size() << std::endl;
-    std::cout << "最终根节点子节点数: " << root->children.size() << std::endl;
+    std::cout << "\n=== Merge completed ===" << std::endl;
+    std::cout << "Total Gaussians after merge: " << gaussians.size() << std::endl;
+    std::cout << "Final root node children count: " << root->children.size() << std::endl;
     Writer::writeHierarchy(output_path.c_str(), gaussians, root, true);
 }
 
@@ -121,9 +121,9 @@ void CreateHier(
     const int count = means.size(0);
     std::vector<Gaussian> gaussians(count);
 
-    // 输出基本信息
-    std::cout << "总高斯数: " << count << std::endl;
-    std::cout << "输出目录: " << output_dir << std::endl;
+    // Output basic information
+    std::cout << "Total Gaussians: " << count << std::endl;
+    std::cout << "Output directory: " << output_dir << std::endl;
 
     auto means_a = means.accessor<float, 2>();
     auto features_dc_a = features_dc.accessor<float, 2>();
@@ -158,26 +158,26 @@ void CreateHier(
         computeCovariance(gaussians[i].scale, gaussians[i].rotation, gaussians[i].covariance);
         
         if (i % 10000 == 0) {
-            std::cout << "已处理 " << i << "/" << count << " 个高斯点" << std::endl;
+            std::cout << "Processed " << i << "/" << count << " Gaussians" << std::endl;
         }
     }
     std::cout << "高斯数据转换完成" << std::endl;
 
     // Process hierarchy
-    std::cout << "\n生成初始KD树结构..." << std::endl;
+    std::cout << "\nGenerating initial KD-tree structure..." << std::endl;
     PointbasedKdTreeGenerator generator;
     ExplicitTreeNode *root = generator.generate(gaussians);
-    std::cout << "根节点边界: [" << root->bounds.minn.transpose() << "] - [" 
+    std::cout << "Root node bounds: [" << root->bounds.minn.transpose() << "] - [" 
               << root->bounds.maxx.transpose() << "]" << std::endl;
 
-    std::cout << "\n执行聚类合并..." << std::endl;
+    std::cout << "\nPerforming cluster merging..." << std::endl;
     ClusterMerger merger;
     merger.merge(root, gaussians);
-    std::cout << "聚类合并完成，当前层次深度: " << root->depth << std::endl;
+    std::cout << "Cluster merging completed. Current hierarchy depth: " << root->depth << std::endl;
 
-    std::cout << "\n对齐旋转..." << std::endl;
+    std::cout << "\nAligning rotations..." << std::endl;
     RotationAligner::align(root, gaussians);
-    std::cout << "旋转对齐完成" << std::endl;
+    std::cout << "Rotation alignment completed" << std::endl;
 
     // Initialize appearance filter with camera positions
     AppearanceFilter filter;
@@ -185,8 +185,8 @@ void CreateHier(
     filter.filter(root, gaussians, limit, 2.0f);
 
     // Write output files
-    std::cout << "\n写入输出文件..." << std::endl;
-    std::cout << "生成文件: " << output_dir << "/hierarchy.hier" << std::endl;
+    std::cout << "\nWriting output files..." << std::endl;
+    std::cout << "Generated file: " << output_dir << "/hierarchy.hier" << std::endl;
     filter.writeAnchors((output_dir + "/anchors.bin").c_str(), root, gaussians, limit);
     Writer::writeHierarchy((output_dir + "/hierarchy.hier").c_str(), gaussians, root, true);
 }
