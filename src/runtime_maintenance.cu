@@ -271,8 +271,8 @@ __global__ void compressCUDA(
 	float* pscale = (float*)&scales[parent];
 	for (int i = 0; i < 3; i++)
 	{
-		mp.x = scale[i];
-		mp.y = pscale[i];
+		mp.x = __float2half(scale[i]);
+		mp.y = __float2half(pscale[i]);
 		scale[i] = *((float*)&mp); // We are overwriting ourselves
 	}
 }
