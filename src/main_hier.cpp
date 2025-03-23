@@ -106,7 +106,7 @@ void CreateHier(
         quats = quats.cpu();
 
     // Create Gaussian structures
-    const int count = position.size(0);
+    const int count = means.size(0);
     std::vector<Gaussian> gaussians(count);
 
     auto means_a = means.accessor<float, 2>();
