@@ -13,30 +13,23 @@ from setuptools import setup
 from torch.utils.cpp_extension import CUDAExtension, BuildExtension
 import os
 
-os.path.dirname(os.path.abspath(__file__))
+BASE_PATH = os.path.dirname(os.path.abspath(__file__))
 
 setup(
     name="gaussian_hierarchy",
-    install_requires=[
-        "ninja",
-        "jaxtyping",
-        "torch",
-    ],
+    install_requires=["ninja", "jaxtyping", "torch", "numpy"],
     ext_modules=[
         CUDAExtension(
             name="gaussian_hierarchy._C",
             sources=[
-                "src/hierarchy_loader.cpp",
-                "src/hierarchy_writer.cpp",
-                "src/traversal.cpp",
-                "src/runtime_switching.cu",
-                "src/torch_interface.cpp",
-                "src/ext.cpp",
+                os.path.join(os.path.join(BASE_PATH, "src/"), f)
+                for f in os.listdir(os.path.join(BASE_PATH, "src/"))
+                if (f.endswith(".cpp") or f.endswith(".cu")) and not f.startswith("mainHierarchy")
             ],
             extra_compile_args=[
-                "-I" + os.path.join(os.path.dirname(os.path.abspath(__file__)), "include/"),
-                "-I" + os.path.join(os.path.dirname(os.path.abspath(__file__)), "dependencies/"),
-                "-I" + os.path.join(os.path.dirname(os.path.abspath(__file__)), "dependencies/eigen/"),
+                "-I" + os.path.join(BASE_PATH, "include/"),
+                "-I" + os.path.join(BASE_PATH, "dependencies/"),
+                "-I" + os.path.join(BASE_PATH, "dependencies/eigen/"),
             ],
         )
     ],
