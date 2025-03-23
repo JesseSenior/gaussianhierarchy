@@ -18,6 +18,10 @@ void MergeHier(
     const torch::Tensor& chunk_centers,
     const std::string& output_path)
 {
+    std::cout << "\n=== 开始合并层次结构 ===" << std::endl;
+    std::cout << "待合并块数: " << hier_files.size() << std::endl;
+    std::cout << "输出路径: " << output_path << std::endl;
+{
     // Convert chunk centers tensor to Eigen vectors
     TORCH_CHECK(chunk_centers.dim() == 2, "chunk_centers must be 2D tensor");
     TORCH_CHECK(chunk_centers.size(1) == 3, "chunk_centers must be Nx3");
@@ -35,6 +39,9 @@ void MergeHier(
     ExplicitTreeNode* root = new ExplicitTreeNode;
     
     for (int chunk_id = 0; chunk_id < num_chunks; ++chunk_id) {
+        std::cout << "\n正在处理块 " << chunk_id + 1 << "/" << num_chunks << std::endl;
+        std::cout << "块中心: " << chunk_centers_vec[chunk_id].transpose() << std::endl;
+        
         ExplicitTreeNode* chunk_root = new ExplicitTreeNode;
         std::vector<Gaussian> chunk_gaussians;
         
@@ -57,6 +64,8 @@ void MergeHier(
         }
         
         // Add as child node
+        std::cout << "已加载块 " << chunk_id << " 包含 " << chunk_gaussians.size() 
+                  << " 个高斯" << std::endl;
         root->children.push_back(chunk_root);
         root->merged.push_back(chunk_root->merged[0]);
         root->depth = std::max(root->depth, chunk_root->depth + 1);
@@ -66,6 +75,9 @@ void MergeHier(
     }
 
     // Write merged hierarchy
+    std::cout << "\n=== 合并完成 ===" << std::endl;
+    std::cout << "合并后总高斯数: " << gaussians.size() << std::endl;
+    std::cout << "最终根节点子节点数: " << root->children.size() << std::endl;
     Writer::writeHierarchy(output_path.c_str(), gaussians, root, true);
 }
 
@@ -81,7 +93,8 @@ void CreateHier(
     float limit = 0.0005f)
 {
     // Validate input dimensions
-    // Validate input dimensions
+    std::cout << "=== 开始创建层次结构 ===" << std::endl;
+    std::cout << "输入参数验证通过" << std::endl;
     TORCH_CHECK(means.size(0) == features_dc.size(0), "Means and features_dc must have same number of points");
     TORCH_CHECK(means.size(0) == features_rest.size(0), "Means and features_rest must have same number of points");
     TORCH_CHECK(means.size(0) == opacities.size(0), "Means and opacities must have same number of points");
@@ -93,8 +106,11 @@ void CreateHier(
     TORCH_CHECK(scales.size(1) == 3, "Scales must be Nx3");
     TORCH_CHECK(quats.size(1) == 4, "Rotations must be Nx4");
 
+    // 输出基本信息
+    std::cout << "总高斯数: " << count << std::endl;
+    std::cout << "输出目录: " << output_dir << std::endl;
+    
     // Convert tensors to CPU if needed
-    if (!means.is_cpu())
         means = means.cpu();
     if (!features_dc.is_cpu())
         features_dc = features_dc.cpu();
@@ -116,6 +132,7 @@ void CreateHier(
     auto scales_a = scales.accessor<float, 2>();
     auto quats_a = quats.accessor<float, 2>();
 
+    std::cout << "\n开始转换高斯数据..." << std::endl;
 #pragma omp parallel for
     for (int i = 0; i < count; ++i)
     {
@@ -139,16 +156,28 @@ void CreateHier(
             for (int k = 0; k < 3; ++k)
                 gaussians[i].shs[j * 3 + k] = features_rest_a[i][j - 1][k];
         computeCovariance(gaussians[i].scale, gaussians[i].rotation, gaussians[i].covariance);
+        
+        if (i % 10000 == 0) {
+            std::cout << "已处理 " << i << "/" << count << " 个高斯点" << std::endl;
+        }
     }
+    std::cout << "高斯数据转换完成" << std::endl;
 
     // Process hierarchy
+    std::cout << "\n生成初始KD树结构..." << std::endl;
     PointbasedKdTreeGenerator generator;
     ExplicitTreeNode *root = generator.generate(gaussians);
+    std::cout << "根节点边界: [" << root->bounds.minn.transpose() << "] - [" 
+              << root->bounds.maxx.transpose() << "]" << std::endl;
 
+    std::cout << "\n执行聚类合并..." << std::endl;
     ClusterMerger merger;
     merger.merge(root, gaussians);
+    std::cout << "聚类合并完成，当前层次深度: " << root->depth << std::endl;
 
+    std::cout << "\n对齐旋转..." << std::endl;
     RotationAligner::align(root, gaussians);
+    std::cout << "旋转对齐完成" << std::endl;
 
     // Initialize appearance filter with camera positions
     AppearanceFilter filter;
@@ -156,6 +185,8 @@ void CreateHier(
     filter.filter(root, gaussians, limit, 2.0f);
 
     // Write output files
+    std::cout << "\n写入输出文件..." << std::endl;
+    std::cout << "生成文件: " << output_dir << "/hierarchy.hier" << std::endl;
     filter.writeAnchors((output_dir + "/anchors.bin").c_str(), root, gaussians, limit);
     Writer::writeHierarchy((output_dir + "/hierarchy.hier").c_str(), gaussians, root, true);
 }
