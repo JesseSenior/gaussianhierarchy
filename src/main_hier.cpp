@@ -21,6 +21,7 @@ void MergeHier(
     std::cout << "\n=== 开始合并层次结构 ===" << std::endl;
     std::cout << "待合并块数: " << hier_files.size() << std::endl;
     std::cout << "输出路径: " << output_path << std::endl;
+
     // Convert chunk centers tensor to Eigen vectors
     TORCH_CHECK(chunk_centers.dim() == 2, "chunk_centers must be 2D tensor");
     TORCH_CHECK(chunk_centers.size(1) == 3, "chunk_centers must be Nx3");
