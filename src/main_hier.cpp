@@ -1,5 +1,6 @@
 #include "torch_interface.h"
 #include "writer.h"
+#include "hierarchy_explicit_loader.h"
 #include "FlatGenerator.h"
 #include "PointbasedKdTreeGenerator.h"
 #include "ClusterMerger.h"
