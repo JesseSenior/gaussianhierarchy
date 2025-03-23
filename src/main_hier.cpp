@@ -12,6 +12,62 @@
 
 using namespace torch;
 
+void MergeHier(
+    const std::vector<std::string>& hier_files,
+    const Tensor& chunk_centers,
+    const std::string& output_path)
+{
+    // Convert chunk centers tensor to Eigen vectors
+    TORCH_CHECK(chunk_centers.dim() == 2, "chunk_centers must be 2D tensor");
+    TORCH_CHECK(chunk_centers.size(1) == 3, "chunk_centers must be Nx3");
+    
+    const int num_chunks = chunk_centers.size(0);
+    std::vector<Eigen::Vector3f> chunk_centers_vec(num_chunks);
+    auto centers_a = chunk_centers.accessor<float, 2>();
+    for (int i = 0; i < num_chunks; ++i) {
+        chunk_centers_vec[i] = Eigen::Vector3f(
+            centers_a[i][0], centers_a[i][1], centers_a[i][2]);
+    }
+
+    // Merge hierarchies
+    std::vector<Gaussian> gaussians;
+    ExplicitTreeNode* root = new ExplicitTreeNode;
+    
+    for (int chunk_id = 0; chunk_id < num_chunks; ++chunk_id) {
+        ExplicitTreeNode* chunk_root = new ExplicitTreeNode;
+        std::vector<Gaussian> chunk_gaussians;
+        
+        // Load explicit hierarchy for current chunk
+        HierarchyExplicitLoader::loadExplicit(
+            hier_files[chunk_id].c_str(),
+            chunk_gaussians,
+            chunk_root,
+            chunk_id,
+            chunk_centers_vec);
+
+        // Merge bounds
+        if (chunk_id == 0) {
+            root->bounds = chunk_root->bounds;
+        } else {
+            for (int i = 0; i < 3; ++i) {
+                root->bounds.minn[i] = std::min(root->bounds.minn[i], chunk_root->bounds.minn[i]);
+                root->bounds.maxx[i] = std::max(root->bounds.maxx[i], chunk_root->bounds.maxx[i]);
+            }
+        }
+        
+        // Add as child node
+        root->children.push_back(chunk_root);
+        root->merged.push_back(chunk_root->merged[0]);
+        root->depth = std::max(root->depth, chunk_root->depth + 1);
+        
+        // Merge gaussians
+        gaussians.insert(gaussians.end(), chunk_gaussians.begin(), chunk_gaussians.end());
+    }
+
+    // Write merged hierarchy
+    Writer::writeHierarchy(output_path.c_str(), gaussians, root, true);
+}
+
 void CreateHier(
     Tensor &means,
     Tensor &features_dc,
