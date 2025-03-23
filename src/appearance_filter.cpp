@@ -41,11 +41,11 @@ void AppearanceFilter::init(const torch::Tensor &camera_positions)
 	cameras.clear();
 
 	// Validate tensor dimensions
-	TENSOR_ON_CPU(camera_positions);
+	TORCH_CHECK(camera_positions.is_cpu(), "Camera positions must be on CPU");
 	TORCH_CHECK(camera_positions.dim() == 2, "Camera positions must be Nx3 tensor");
 	TORCH_CHECK(camera_positions.size(1) == 3, "Camera positions must be Nx3 tensor");
 
-	auto positions_a = camera_positions.accessor<float, 2>();
+	auto positions_a = camera_positions.accessor<float,2>();
 	const size_t num_cams = positions_a.size(0);
 
 	// Create default camera parameters

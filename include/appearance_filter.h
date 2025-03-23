@@ -16,6 +16,7 @@
 #include "common.h"
 #include <iostream>
 #include <fstream>
+#include <torch/torch.h>
 
 class AppearanceFilter
 {
