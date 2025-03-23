@@ -14,9 +14,9 @@
 using namespace torch;
 
 void MergeHier(
-    const std::vector<std::string>& hier_files,
-    const torch::Tensor& chunk_centers,
-    const std::string& output_path)
+    const std::vector<std::string> &hier_files,
+    const torch::Tensor &chunk_centers,
+    const std::string &output_path)
 {
     std::cout << "\n=== Merging hierarchies ===" << std::endl;
     std::cout << "Number of chunks to merge: " << hier_files.size() << std::endl;
@@ -25,26 +25,28 @@ void MergeHier(
     // Convert chunk centers tensor to Eigen vectors
     TORCH_CHECK(chunk_centers.dim() == 2, "chunk_centers must be 2D tensor");
     TORCH_CHECK(chunk_centers.size(1) == 3, "chunk_centers must be Nx3");
-    
+
     const int num_chunks = chunk_centers.size(0);
     std::vector<Eigen::Vector3f> chunk_centers_vec(num_chunks);
     auto centers_a = chunk_centers.accessor<float, 2>();
-    for (int i = 0; i < num_chunks; ++i) {
+    for (int i = 0; i < num_chunks; ++i)
+    {
         chunk_centers_vec[i] = Eigen::Vector3f(
             centers_a[i][0], centers_a[i][1], centers_a[i][2]);
     }
 
     // Merge hierarchies
     std::vector<Gaussian> gaussians;
-    ExplicitTreeNode* root = new ExplicitTreeNode;
-    
-    for (int chunk_id = 0; chunk_id < num_chunks; ++chunk_id) {
+    ExplicitTreeNode *root = new ExplicitTreeNode;
+
+    for (int chunk_id = 0; chunk_id < num_chunks; ++chunk_id)
+    {
         std::cout << "\nProcessing chunk " << chunk_id + 1 << "/" << num_chunks << std::endl;
         std::cout << "Chunk center: " << chunk_centers_vec[chunk_id].transpose() << std::endl;
-        
-        ExplicitTreeNode* chunk_root = new ExplicitTreeNode;
+
+        ExplicitTreeNode *chunk_root = new ExplicitTreeNode;
         std::vector<Gaussian> chunk_gaussians;
-        
+
         // Load explicit hierarchy for current chunk
         HierarchyExplicitLoader::loadExplicit(
             hier_files[chunk_id].c_str(),
@@ -54,22 +56,26 @@ void MergeHier(
             chunk_centers_vec);
 
         // Merge bounds
-        if (chunk_id == 0) {
+        if (chunk_id == 0)
+        {
             root->bounds = chunk_root->bounds;
-        } else {
-            for (int i = 0; i < 3; ++i) {
+        }
+        else
+        {
+            for (int i = 0; i < 3; ++i)
+            {
                 root->bounds.minn[i] = std::min(root->bounds.minn[i], chunk_root->bounds.minn[i]);
                 root->bounds.maxx[i] = std::max(root->bounds.maxx[i], chunk_root->bounds.maxx[i]);
             }
         }
-        
+
         // Add as child node
-        std::cout << "Loaded chunk " << chunk_id << " containing " << chunk_gaussians.size() 
+        std::cout << "Loaded chunk " << chunk_id << " containing " << chunk_gaussians.size()
                   << " Gaussians" << std::endl;
         root->children.push_back(chunk_root);
         root->merged.push_back(chunk_root->merged[0]);
         root->depth = std::max(root->depth, chunk_root->depth + 1);
-        
+
         // Merge gaussians
         gaussians.insert(gaussians.end(), chunk_gaussians.begin(), chunk_gaussians.end());
     }
@@ -107,15 +113,12 @@ void CreateHier(
     TORCH_CHECK(quats.size(1) == 4, "Rotations must be Nx4");
 
     // Convert tensors to CPU if needed
-        means = means.cpu();
-    if (!features_dc.is_cpu())
-        features_dc = features_dc.cpu();
-    if (!opacities.is_cpu())
-        opacities = opacities.cpu();
-    if (!scales.is_cpu())
-        scales = scales.cpu();
-    if (!quats.is_cpu())
-        quats = quats.cpu();
+    means = means.cpu();
+    features_dc = features_dc.cpu();
+    features_rest = features_rest.cpu();
+    opacities = opacities.cpu();
+    scales = scales.cpu();
+    quats = quats.cpu();
 
     // Create Gaussian structures
     const int count = means.size(0);
@@ -133,7 +136,6 @@ void CreateHier(
     auto quats_a = quats.accessor<float, 2>();
 
     std::cout << "\nConverting Gaussian data..." << std::endl;
-#pragma omp parallel for
     for (int i = 0; i < count; ++i)
     {
         gaussians[i].position = Eigen::Vector3f(means_a[i][0], means_a[i][1], means_a[i][2]);
@@ -156,10 +158,9 @@ void CreateHier(
             for (int k = 0; k < 3; ++k)
                 gaussians[i].shs[j * 3 + k] = features_rest_a[i][j - 1][k];
         computeCovariance(gaussians[i].scale, gaussians[i].rotation, gaussians[i].covariance);
-        
-        if (i % 10000 == 0) {
+
+        if (i % 10000 == 0)
             std::cout << "Processed " << i << "/" << count << " Gaussians" << std::endl;
-        }
     }
     std::cout << "Gaussian data conversion completed" << std::endl;
 
@@ -167,7 +168,7 @@ void CreateHier(
     std::cout << "\nGenerating initial KD-tree structure..." << std::endl;
     PointbasedKdTreeGenerator generator;
     ExplicitTreeNode *root = generator.generate(gaussians);
-    std::cout << "Root node bounds: [" << root->bounds.minn.transpose() << "] - [" 
+    std::cout << "Root node bounds: [" << root->bounds.minn.transpose() << "] - ["
               << root->bounds.maxx.transpose() << "]" << std::endl;
 
     std::cout << "\nPerforming cluster merging..." << std::endl;
