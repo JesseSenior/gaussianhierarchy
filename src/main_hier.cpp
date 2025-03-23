@@ -112,7 +112,7 @@ void CreateHier(
     auto means_a = means.accessor<float, 2>();
     auto features_dc_a = features_dc.accessor<float, 2>();
     auto features_rest_a = features_rest.accessor<float, 3>();
-    auto opacities_a = opacities.accessor<float, 1>();
+    auto opacities_a = opacities.accessor<float, 2>();
     auto scales_a = scales.accessor<float, 2>();
     auto quats_a = quats.accessor<float, 2>();
 
@@ -120,7 +120,7 @@ void CreateHier(
     for (int i = 0; i < count; ++i)
     {
         gaussians[i].position = Eigen::Vector3f(means_a[i][0], means_a[i][1], means_a[i][2]);
-        gaussians[i].opacity = opacities_a[i];
+        gaussians[i].opacity = opacities_a[i][0];
         // Convert scale to log scale and rotation to normalized quaternion
         gaussians[i].scale = Eigen::Vector3f(
             std::exp(scales_a[i][0]),
