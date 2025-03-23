@@ -93,8 +93,8 @@ void CreateHier(
     float limit = 0.0005f)
 {
     // Validate input dimensions
-    std::cout << "=== 开始创建层次结构 ===" << std::endl;
-    std::cout << "输入参数验证通过" << std::endl;
+    std::cout << "=== Starting hierarchy creation ===" << std::endl;
+    std::cout << "Input parameters validated successfully" << std::endl;
     TORCH_CHECK(means.size(0) == features_dc.size(0), "Means and features_dc must have same number of points");
     TORCH_CHECK(means.size(0) == features_rest.size(0), "Means and features_rest must have same number of points");
     TORCH_CHECK(means.size(0) == opacities.size(0), "Means and opacities must have same number of points");
@@ -132,7 +132,7 @@ void CreateHier(
     auto scales_a = scales.accessor<float, 2>();
     auto quats_a = quats.accessor<float, 2>();
 
-    std::cout << "\n开始转换高斯数据..." << std::endl;
+    std::cout << "\nConverting Gaussian data..." << std::endl;
 #pragma omp parallel for
     for (int i = 0; i < count; ++i)
     {
@@ -161,7 +161,7 @@ void CreateHier(
             std::cout << "Processed " << i << "/" << count << " Gaussians" << std::endl;
         }
     }
-    std::cout << "高斯数据转换完成" << std::endl;
+    std::cout << "Gaussian data conversion completed" << std::endl;
 
     // Process hierarchy
     std::cout << "\nGenerating initial KD-tree structure..." << std::endl;
