@@ -21,7 +21,6 @@ void MergeHier(
     std::cout << "\n=== 开始合并层次结构 ===" << std::endl;
     std::cout << "待合并块数: " << hier_files.size() << std::endl;
     std::cout << "输出路径: " << output_path << std::endl;
-{
     // Convert chunk centers tensor to Eigen vectors
     TORCH_CHECK(chunk_centers.dim() == 2, "chunk_centers must be 2D tensor");
     TORCH_CHECK(chunk_centers.size(1) == 3, "chunk_centers must be Nx3");
@@ -106,10 +105,6 @@ void CreateHier(
     TORCH_CHECK(scales.size(1) == 3, "Scales must be Nx3");
     TORCH_CHECK(quats.size(1) == 4, "Rotations must be Nx4");
 
-    // 输出基本信息
-    std::cout << "总高斯数: " << count << std::endl;
-    std::cout << "输出目录: " << output_dir << std::endl;
-    
     // Convert tensors to CPU if needed
         means = means.cpu();
     if (!features_dc.is_cpu())
@@ -124,6 +119,10 @@ void CreateHier(
     // Create Gaussian structures
     const int count = means.size(0);
     std::vector<Gaussian> gaussians(count);
+
+    // 输出基本信息
+    std::cout << "总高斯数: " << count << std::endl;
+    std::cout << "输出目录: " << output_dir << std::endl;
 
     auto means_a = means.accessor<float, 2>();
     auto features_dc_a = features_dc.accessor<float, 2>();
