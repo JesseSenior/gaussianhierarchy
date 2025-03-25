@@ -45,12 +45,11 @@ void MergeHier(
         std::cout << "Chunk center: " << chunk_centers_vec[chunk_id].transpose() << std::endl;
 
         ExplicitTreeNode *chunk_root = new ExplicitTreeNode;
-        std::vector<Gaussian> chunk_gaussians;
 
         // Load explicit hierarchy for current chunk
         HierarchyExplicitLoader::loadExplicit(
             hier_files[chunk_id].c_str(),
-            chunk_gaussians,
+            gaussians,
             chunk_root,
             chunk_id,
             chunk_centers_vec);
@@ -70,14 +69,12 @@ void MergeHier(
         }
 
         // Add as child node
-        std::cout << "Loaded chunk " << chunk_id << " containing " << chunk_gaussians.size()
-                  << " Gaussians" << std::endl;
+        std::cout << "Accumulated Gaussians: " << gaussians.size() << std::endl;
+        root->depth = std::max(root->depth, chunk_root->depth + 1);
         root->children.push_back(chunk_root);
         root->merged.push_back(chunk_root->merged[0]);
-        root->depth = std::max(root->depth, chunk_root->depth + 1);
-
-        // Merge gaussians
-        gaussians.insert(gaussians.end(), chunk_gaussians.begin(), chunk_gaussians.end());
+        root->bounds.maxx[3] = 1e9f;
+        root->bounds.minn[3] = 1e9f;
     }
 
     // Write merged hierarchy
