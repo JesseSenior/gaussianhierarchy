@@ -20,7 +20,7 @@ def create_hier(
         means: (N,3) Tensor of Gaussian means
         features_dc: (N,3) Tensor of DC SH coefficients
         features_rest: (N,15,3) Tensor of rest SH coefficients
-        opacities: (N,) Tensor of opacities
+        opacities: (N,1) Tensor of opacities
         scales: (N,3) Tensor of scales
         quats: (N,4) Tensor of rotations (quaternions)
         camera_positions: (M,3) Tensor of camera positions
