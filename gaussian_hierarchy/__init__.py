@@ -70,8 +70,26 @@ def merge_hier(
     _C.merge_hier(full_paths, chunk_centers.contiguous(), output_path)
 
 
-def load_hierarchy():
-    pass
+def load_hierarchy(path: str, device: str = "cuda") -> torch.Tensor:
+    """Load hierarchy data from file
+    
+    Args:
+        path: Path to hierarchy file
+        device: Target device for tensor (default: cuda)
+    
+    Returns:
+        (N,8) Tensor containing hierarchy node data (pos, radius, child_idx)
+    """
+    # Call C++ implementation and move tensor to target device
+    return _C.load_hier(path).to(device)
 
-def write_hierarchy():
-    pass
+
+def write_hierarchy(nodes: torch.Tensor, path: str) -> None:
+    """Write hierarchy data to file
+    
+    Args:
+        nodes: (N,8) Tensor containing hierarchy node data
+        path: Path to write output file
+    """
+    # Ensure tensor is on CPU and contiguous before writing
+    _C.write_hier(nodes.cpu().contiguous(), path)
