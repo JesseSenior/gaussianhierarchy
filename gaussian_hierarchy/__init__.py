@@ -118,3 +118,74 @@ def write_hierarchy(
         boxes.contiguous().cpu(),
         path
     )
+
+
+def expand_to_size(
+    nodes: torch.Tensor,
+    boxes: torch.Tensor,
+    size: float,
+    viewpoint: torch.Tensor,
+    viewdir: torch.Tensor,
+    render_indices: torch.Tensor,
+    parent_indices: torch.Tensor,
+    nodes_for_render_indices: torch.Tensor
+) -> int:
+    """Expand hierarchy nodes to target size based on viewing parameters
+    
+    Args:
+        nodes: (N,7) Nodes metadata tensor
+        boxes: (N,2,4) Bounding boxes tensor
+        size: Target size threshold
+        viewpoint: (3,) Camera position
+        viewdir: (3,) View direction vector
+        render_indices: (M,) Indices of nodes to render
+        parent_indices: (M,) Parent node indices
+        nodes_for_render_indices: (M,) Node indices for rendering
+    
+    Returns:
+        Number of nodes after expansion
+    """
+    return _C.expand_to_size(
+        nodes.cpu().contiguous(),
+        boxes.cpu().contiguous(),
+        size,
+        viewpoint.cpu().contiguous(),
+        viewdir.cpu().contiguous(),
+        render_indices.cpu().contiguous(),
+        parent_indices.cpu().contiguous(),
+        nodes_for_render_indices.cpu().contiguous()
+    )
+
+
+def get_interpolation_weights(
+    indices: torch.Tensor,
+    size: float,
+    nodes: torch.Tensor,
+    boxes: torch.Tensor,
+    viewpoint: torch.Tensor,
+    viewdir: torch.Tensor,
+    ts: torch.Tensor,
+    num_kids: torch.Tensor
+) -> None:
+    """Calculate interpolation weights for specified nodes
+    
+    Args:
+        indices: (K,) Node indices to process
+        size: Size threshold for weight calculation
+        nodes: (N,7) Nodes metadata tensor
+        boxes: (N,2,4) Bounding boxes tensor
+        viewpoint: (3,) Camera position
+        viewdir: (3,) View direction vector
+        ts: (K,) Output tensor for interpolation weights
+        num_kids: (K,) Output tensor for child counts
+    """
+    _C.get_interpolation_weights(
+        indices.cpu().contiguous(),
+        size,
+        nodes.cpu().contiguous(),
+        boxes.cpu().contiguous(),
+        viewpoint.cpu().contiguous(),
+        viewdir.cpu().contiguous(),
+        ts.cpu().contiguous(),
+        num_kids.cpu().contiguous()
+    )
