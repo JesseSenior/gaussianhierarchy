@@ -70,26 +70,51 @@ def merge_hier(
     _C.merge_hier(full_paths, chunk_centers.contiguous(), output_path)
 
 
-def load_hierarchy(path: str, device: str = "cuda") -> torch.Tensor:
+def load_hierarchy(path: str, device: str = "cuda") -> tuple:
     """Load hierarchy data from file
     
     Args:
         path: Path to hierarchy file
-        device: Target device for tensor (default: cuda)
+        device: Target device for tensors (default: cuda)
     
     Returns:
-        (N,8) Tensor containing hierarchy node data (pos, radius, child_idx)
+        Tuple of tensors (pos, shs, alpha, scale, rot, nodes, boxes)
     """
-    # Call C++ implementation and move tensor to target device
-    return _C.load_hier(path).to(device)
+    # Load all tensors and move to target device
+    result = _C.load_hierarchy(path)
+    return tuple(t.to(device).contiguous() for t in result)
 
 
-def write_hierarchy(nodes: torch.Tensor, path: str) -> None:
+def write_hierarchy(
+    pos: torch.Tensor,
+    shs: torch.Tensor,
+    opacities: torch.Tensor,
+    log_scales: torch.Tensor,
+    rotations: torch.Tensor,
+    nodes: torch.Tensor,
+    boxes: torch.Tensor,
+    path: str
+) -> None:
     """Write hierarchy data to file
     
     Args:
-        nodes: (N,8) Tensor containing hierarchy node data
+        pos: (N,3) Positions tensor
+        shs: (N,16,3) SH coefficients tensor
+        opacities: (N,1) Opacities tensor
+        log_scales: (N,3) Log scales tensor
+        rotations: (N,4) Rotations tensor
+        nodes: (N,7) Nodes metadata tensor
+        boxes: (N,2,4) Bounding boxes tensor
         path: Path to write output file
     """
-    # Ensure tensor is on CPU and contiguous before writing
-    _C.write_hier(nodes.cpu().contiguous(), path)
+    # Ensure all tensors are contiguous and on CPU before writing
+    _C.write_hierarchy(
+        pos.contiguous().cpu(),
+        shs.contiguous().cpu(),
+        opacities.contiguous().cpu(),
+        log_scales.contiguous().cpu(),
+        rotations.contiguous().cpu(),
+        nodes.contiguous().cpu(),
+        boxes.contiguous().cpu(),
+        path
+    )
