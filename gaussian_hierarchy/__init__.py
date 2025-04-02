@@ -31,9 +31,9 @@ def create_hier(
         means.contiguous(),
         features_dc.contiguous(),
         features_rest.contiguous(),
-        opacities.contiguous(),
-        scales.contiguous(),
-        quats.contiguous(),
+        opacities.sigmoid().contiguous(),
+        scales.exp().contiguous(),
+        torch.linalg.norm(quats, dim=0).contiguous(),
         camera_positions.contiguous(),
         output_dir,
         limit,
@@ -68,3 +68,10 @@ def merge_hier(
 
     # Call C++ implementation
     _C.merge_hier(full_paths, chunk_centers.contiguous(), output_path)
+
+
+def load_hierarchy():
+    pass
+
+def write_hierarchy():
+    pass
