@@ -72,11 +72,11 @@ def merge_hier(
 
 def load_hierarchy(path: str, device: str = "cuda") -> tuple:
     """Load hierarchy data from file
-    
+
     Args:
         path: Path to hierarchy file
         device: Target device for tensors (default: cuda)
-    
+
     Returns:
         Tuple of tensors (pos, shs, alpha, scale, rot, nodes, boxes)
     """
@@ -93,10 +93,10 @@ def write_hierarchy(
     rotations: torch.Tensor,
     nodes: torch.Tensor,
     boxes: torch.Tensor,
-    path: str
+    path: str,
 ) -> None:
     """Write hierarchy data to file
-    
+
     Args:
         pos: (N,3) Positions tensor
         shs: (N,16,3) SH coefficients tensor
@@ -109,6 +109,7 @@ def write_hierarchy(
     """
     # Ensure all tensors are contiguous and on CPU before writing
     _C.write_hierarchy(
+        path,
         pos.contiguous().cpu(),
         shs.contiguous().cpu(),
         opacities.contiguous().cpu(),
@@ -116,7 +117,6 @@ def write_hierarchy(
         rotations.contiguous().cpu(),
         nodes.contiguous().cpu(),
         boxes.contiguous().cpu(),
-        path
     )
 
 
@@ -128,10 +128,10 @@ def expand_to_size(
     viewdir: torch.Tensor,
     render_indices: torch.Tensor,
     parent_indices: torch.Tensor,
-    nodes_for_render_indices: torch.Tensor
+    nodes_for_render_indices: torch.Tensor,
 ) -> int:
     """Expand hierarchy nodes to target size based on viewing parameters
-    
+
     Args:
         nodes: (N,7) Nodes metadata tensor
         boxes: (N,2,4) Bounding boxes tensor
@@ -141,19 +141,19 @@ def expand_to_size(
         render_indices: (M,) Indices of nodes to render
         parent_indices: (M,) Parent node indices
         nodes_for_render_indices: (M,) Node indices for rendering
-    
+
     Returns:
         Number of nodes after expansion
     """
     return _C.expand_to_size(
-        nodes.cpu().contiguous(),
-        boxes.cpu().contiguous(),
+        nodes.contiguous(),
+        boxes.contiguous(),
         size,
-        viewpoint.cpu().contiguous(),
-        viewdir.cpu().contiguous(),
-        render_indices.cpu().contiguous(),
-        parent_indices.cpu().contiguous(),
-        nodes_for_render_indices.cpu().contiguous()
+        viewpoint.contiguous(),
+        viewdir.contiguous(),
+        render_indices.contiguous(),
+        parent_indices.contiguous(),
+        nodes_for_render_indices.contiguous(),
     )
 
 
@@ -165,10 +165,10 @@ def get_interpolation_weights(
     viewpoint: torch.Tensor,
     viewdir: torch.Tensor,
     ts: torch.Tensor,
-    num_kids: torch.Tensor
+    num_kids: torch.Tensor,
 ) -> None:
     """Calculate interpolation weights for specified nodes
-    
+
     Args:
         indices: (K,) Node indices to process
         size: Size threshold for weight calculation
@@ -180,12 +180,12 @@ def get_interpolation_weights(
         num_kids: (K,) Output tensor for child counts
     """
     _C.get_interpolation_weights(
-        indices.cpu().contiguous(),
+        indices.contiguous(),
         size,
-        nodes.cpu().contiguous(),
-        boxes.cpu().contiguous(),
+        nodes.contiguous(),
+        boxes.contiguous(),
         viewpoint.cpu().contiguous(),
         viewdir.cpu().contiguous(),
-        ts.cpu().contiguous(),
-        num_kids.cpu().contiguous()
+        ts.contiguous(),
+        num_kids.contiguous(),
     )

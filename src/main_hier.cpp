@@ -137,13 +137,11 @@ void CreateHier(
     {
         gaussians[i].position = Eigen::Vector3f(means_a[i][0], means_a[i][1], means_a[i][2]);
         gaussians[i].opacity = opacities_a[i][0];
-        // Convert scale to log scale and rotation to normalized quaternion
         gaussians[i].scale = Eigen::Vector3f(
-            std::exp(scales_a[i][0]),
-            std::exp(scales_a[i][1]),
-            std::exp(scales_a[i][2]));
-        Eigen::Vector4f rot(quats_a[i][0], quats_a[i][1], quats_a[i][2], quats_a[i][3]);
-        gaussians[i].rotation = rot.normalized();
+            scales_a[i][0],
+            scales_a[i][1],
+            scales_a[i][2]);
+        gaussians[i].rotation = Eigen::Vector4f(quats_a[i][0], quats_a[i][1], quats_a[i][2], quats_a[i][3]);
 
         // Copy SH coefficients with correct channel ordering (RGB)
         // features_dc: [N, 3] -> shs[0:3]
