@@ -17,6 +17,7 @@ BASE_PATH = os.path.dirname(os.path.abspath(__file__))
 
 setup(
     name="gaussian_hierarchy",
+    packages=["gaussian_hierarchy"],
     install_requires=["ninja", "jaxtyping", "torch", "numpy"],
     ext_modules=[
         CUDAExtension(
